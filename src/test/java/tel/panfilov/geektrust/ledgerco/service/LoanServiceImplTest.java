@@ -197,6 +197,30 @@ public class LoanServiceImplTest extends AbstractLedgerCoTest {
                 .satisfies(b -> assertThat(b.getPaymentsLeft()).isEqualTo(1));
     }
 
+    @Test
+    void checkBalancePaymentNoOutOfRange() {
+        Loan loan = loanService.createLoan(new LoanId("NAB", "Andrey"), new BigDecimal("2000"), 2, new BigDecimal("2"));
+        when(loanRepository.findById(loan.getId()))
+                .thenReturn(Optional.of(loan));
+
+        int months = loan.getSchedule().getMonths();
+        assertThat(loanService.getBalance(loan.getId(), months))
+                .satisfies(b -> assertThat(b.getPaymentsLeft()).isEqualTo(0))
+                .satisfies(b -> assertThat(b.getAmountPaid()).isEqualTo(loan.getSchedule().getTotal()));
+
+        assertThat(loanService.getBalance(loan.getId(), months * 2))
+                .satisfies(b -> assertThat(b.getPaymentsLeft()).isEqualTo(0))
+                .satisfies(b -> assertThat(b.getAmountPaid()).isEqualTo(loan.getSchedule().getTotal()));
+
+        assertThat(loanService.getBalance(loan.getId(), 0))
+                .satisfies(b -> assertThat(b.getPaymentsLeft()).isEqualTo(loan.getSchedule().getMonths()))
+                .satisfies(b -> assertThat(b.getAmountPaid()).isEqualTo(BigDecimal.ZERO));
+
+        assertThatThrownBy(() -> loanService.getBalance(loan.getId(), -1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Negative Payment No");
+    }
+
     protected Loan createLoan(Loan loan) {
         return loanService.createLoan(
                 loan.getId(),

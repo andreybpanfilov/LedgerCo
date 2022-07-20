@@ -47,9 +47,11 @@ public class LoanServiceImpl implements LoanService {
         Assert.isTrue(amount.signum() > 0, "Lump amount must be positive");
         Assert.isTrue(paymentNo >= 0, "Negative Payment No");
         Loan loan = getLoan(loanId);
+        PaymentSchedule schedule = loan.getSchedule();
+        int payments = Math.min(paymentNo, schedule.getMonths());
         BigDecimal lumpSum = loan.getLumpSum(paymentNo);
-        BigDecimal debt = loan.getSchedule().getTotal()
-                .subtract(getPaidAmount(loan, lumpSum, paymentNo));
+        BigDecimal debt = schedule.getTotal()
+                .subtract(getPaidAmount(loan, lumpSum, payments));
         Assert.isTrue(debt.compareTo(amount) >= 0, "Lump amount exceeds debt");
         loan.addPayment(new Payment(paymentNo, amount));
         loanRepository.update(loan);
@@ -67,6 +69,7 @@ public class LoanServiceImpl implements LoanService {
 
     @Override
     public Balance getBalance(LoanId loanId, int paymentNo) {
+        Assert.isTrue(paymentNo >= 0, "Negative Payment No");
         Loan loan = getLoan(loanId);
         BigDecimal lumpSum = loan.getLumpSum(paymentNo);
         PaymentSchedule schedule = loan.getSchedule();
